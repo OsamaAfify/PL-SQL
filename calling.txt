@@ -1,0 +1,11 @@
+declare
+
+begin
+project_pkg.pyments_no;
+project_pkg.p_Installment_insert;
+end;
+
+
+clients;
+contracts 
+installments_paid;

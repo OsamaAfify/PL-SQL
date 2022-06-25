@@ -1,0 +1,31 @@
+CREATE OR REPLACE PROCEDURE pyments_no
+is
+--variables
+cursor contract_cursor is select * from contracts ;
+v_months number(6);
+begin 
+
+for contract_record in contract_cursor loop
+ v_months := months_between(contract_record.contract_enddate, contract_record.contract_startdate);
+-- calculate number of pyment installments
+        if  contract_record.contract_payment_type like 'ANNUAL'then
+            contract_record.PYMENTS_INSTALLMENTS_NO := ( v_months / 12) ;
+             
+        elsif contract_record.contract_payment_type like  'HALF_ANNUAL'then
+            contract_record.PYMENTS_INSTALLMENTS_NO := (v_months / 6 ); 
+            
+        elsif contract_record.contract_payment_type like 'QUARTER' then
+            contract_record. PYMENTS_INSTALLMENTS_NO := (v_months / 3) ;
+              
+        elsif contract_record.contract_payment_type like  'MONTHLY' then
+            contract_record. PYMENTS_INSTALLMENTS_NO := v_months  ;  
+            
+        end if ;
+        
+        -- add number of payments to conrtacts table 
+        update contracts 
+        set PYMENTS_INSTALLMENTS_NO =  contract_record. PYMENTS_INSTALLMENTS_NO 
+        where contract_id = contract_record.contract_id ;
+end loop;
+end;
+/

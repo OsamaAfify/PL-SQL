@@ -1,0 +1,92 @@
+Create or Replace package body project_pkg
+is 
+-- body pyment number procedure
+ PROCEDURE pyments_no
+is
+--variables
+cursor contract_cursor is select * from contracts ;
+v_months number(6);
+begin 
+
+for contract_record in contract_cursor loop
+ v_months := months_between(contract_record.contract_enddate, contract_record.contract_startdate);
+-- calculate number of pyment installments
+        if  contract_record.contract_payment_type like 'ANNUAL'then
+            contract_record.PYMENTS_INSTALLMENTS_NO := ( v_months / 12) ;
+             
+        elsif contract_record.contract_payment_type like  'HALF_ANNUAL'then
+            contract_record.PYMENTS_INSTALLMENTS_NO := (v_months / 6 ); 
+            
+        elsif contract_record.contract_payment_type like 'QUARTER' then
+            contract_record. PYMENTS_INSTALLMENTS_NO := (v_months / 3) ;
+              
+        elsif contract_record.contract_payment_type like  'MONTHLY' then
+            contract_record. PYMENTS_INSTALLMENTS_NO := v_months  ;  
+            
+        end if ;
+        
+        -- add number of payments to conrtacts table 
+        update contracts 
+        set PYMENTS_INSTALLMENTS_NO =  contract_record. PYMENTS_INSTALLMENTS_NO 
+        where contract_id = contract_record.contract_id ;
+end loop;
+end;
+
+-- body installment table insert procedure
+ PROCEDURE p_Installment_insert
+is
+--variables
+cursor contract_cursor is select * from contracts ;
+v_fees_topay  number(10,2);
+v_amount number (6);
+v_counter number(6);
+v_counter_end number(6) := 0;
+v_installment_date date;
+
+begin 
+
+
+
+for contract_record in contract_cursor loop
+       
+        
+    -- calculate fees of each clinet without deposit 
+        if contract_record.CONTRACT_DEPOSIT_FEES is not null  then
+            v_fees_topay := (contract_record.CONTRACT_TOTAL_FEES - contract_record.CONTRACT_DEPOSIT_FEES);
+        else
+            v_fees_topay := contract_record.CONTRACT_TOTAL_FEES;
+        end if ;
+ 
+    -- calculate amount of each installment       
+       v_amount := v_fees_topay / contract_record.PYMENTS_INSTALLMENTS_NO;
+
+
+       v_installment_date := contract_record.CONTRACT_STARTDATE;
+       
+      -- insert first installment 
+       insert into installments_paid(installment_id,contract_id,INSTALLMENT_DATE,installment_amount,paid)
+       values(seq_insatallment_id.nextval,contract_record.contract_id,v_installment_date,v_amount,0);
+       
+       v_counter := contract_record.PYMENTS_INSTALLMENTS_NO -1; 
+       
+       
+     for i  in 1..(contract_record.PYMENTS_INSTALLMENTS_NO -1)  loop
+       
+             -- calcuate date for each installment
+              if  contract_record.contract_payment_type like 'ANNUAL'then
+                    v_installment_date :=  add_months( v_installment_date ,12);
+                elsif contract_record.contract_payment_type like 'HALF_ANNUAL'then
+                    v_installment_date:=add_months(  v_installment_date ,6);
+                elsif contract_record.contract_payment_type like 'QUARTER'then
+                   v_installment_date:=  add_months(  v_installment_date ,3);
+                elsif contract_record.contract_payment_type like 'MONTHLY'then
+                   v_installment_date:= add_months(  v_installment_date ,1);
+                 end if ;
+                 -- insert the rest of installments
+                 insert into installments_paid(installment_id, contract_id, INSTALLMENT_DATE, installment_amount, paid)
+                 values(seq_insatallment_id.nextval,contract_record.contract_id,v_installment_date,v_amount,0);
+                
+       end loop;        
+end loop;
+end ;
+end  project_pkg;

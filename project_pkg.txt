@@ -1,0 +1,7 @@
+Create or Replace package project_pkg
+IS
+ PROCEDURE pyments_no;
+ PROCEDURE p_Installment_insert;
+ 
+ end project_pkg;
+ 
